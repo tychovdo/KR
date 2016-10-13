@@ -1,4 +1,4 @@
-from igraph import *
+import graphviz as gv
 
 class CausalModel():
     def __init__(self):
@@ -40,64 +40,57 @@ class CausalModel():
             print("{:15} {:10} {:10}".format(src, dst, amount))
 
     def plot_model(self):
-        g = Graph(directed=True)
+        g = gv.Digraph(format='svg')
         
         # Adding quantities
         q_names = [x[0] for x in self.quantities]
-        q_values = [x[1] for x in self.quantities]
-        q_derivatives = [x[2] for x in self.quantities]
-
-        g.add_vertices(len(self.quantities))
-        g.vs["name"] = q_names
-        g.vs["value"] = q_values
-        g.vs["derivative"] = q_derivatives
-        g.vs["label"] = g.vs["name"]
-
-        # Add relationships
-        edges = []
-        labels = []
+        for q in q_names:
+            g.node(q)
 
         # Add influencial relationships
         for (src, dst, amount) in self.influences:
-            src_id = q_names.index(src)
-            dst_id = q_names.index(dst)
-
-            edges.append((src_id, dst_id))
-            labels.append("I{}".format(amount))
+            g.edge(src, dst, "I{}".format(amount))
 
         # Add proportional relationships
         for (src, dst, amount) in self.proportionals:
-            src_id = q_names.index(src)
-            dst_id = q_names.index(dst)
+            g.edge(src, dst, "P{}".format(amount))
 
-            edges.append((src_id, dst_id))
-            labels.append("P{}".format(amount))
+        styles = {
+            'graph': {
+                'label': 'Causal model',
+                'fontsize': '15',
+                'fontcolor': '#999999',
+                'bgcolor': '#ffffff',
+                'rankdir': 'LR',
+            },
+            'nodes': {
+                'fontname': 'Helvetica',
+                'shape': 'circle',
+                'fontcolor': 'white',
+                'color': 'white',
+                'style': 'filled',
+                'fillcolor': '#006699',
+            },
+            'edges': {
+                'color': '#999999',
+                'arrowhead': 'open',
+                'fontname': 'Helvetica',
+                'fontsize': '12',
+                'fontcolor': '#999999',
+            }
+        }
 
-        g.add_edges(edges)
-        g.es["label"] = labels
-
-        # Plot model
-        visual_style = {}
-        visual_style["vertex_color"] = "#a6bddb"
-        visual_style["vertex_frame_width"] = 0
-        visual_style["vertex_label_color"] = "#fff"
-        visual_style["vertex_size"] = 80
-        visual_style["vertex_label_size"] = 15
-        visual_style["vertex_label_family"] = "Arial"
-
-        visual_style["edge_color"] = "#999"
-        visual_style["edge_width"] = 5
-        visual_style["edge_curved"] = True
-        visual_style["edge_label_distance"] = 1000
-        visual_style["edge_arrow_size"] = 2
-        visual_style["edge_label_size"] = 20
-        visual_style["edge_label_color"] = "#999"
-        visual_style["edge_label_family"] = "Arial"
-        visual_style["margin"] = 80
-
-
-        plot(g, **visual_style)
-
+        g.graph_attr.update(
+            ('graph' in styles and styles['graph']) or {}
+        )
+        g.node_attr.update(
+            ('nodes' in styles and styles['nodes']) or {}
+        )
+        g.edge_attr.update(
+            ('edges' in styles and styles['edges']) or {}
+        )
+        filename = g.render(filename='test')
+        print(filename)
 
 # Define causal model
 cm = CausalModel()
