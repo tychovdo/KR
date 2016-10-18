@@ -8,6 +8,8 @@ class CausalModel():
         self.proportionals = []
         self.value_cors = []
 
+        self.states = []
+
     def add_quantity(self, name, m_space, d_space):
         """ Add quantity including magnitude (m) and derivative (d) """
         self.quantities.append((name, m_space, d_space))
@@ -26,52 +28,55 @@ class CausalModel():
 
     def reason(self):
         """ Generate state-graph from causal model """
+        class State():
+            def __init__(self, state_tuple):
+                self.state_tuple = state_tuple
+                self.links = []
 
-        # Generate fully-connected graph of possible states and transistions
-        possibles = []
+            def __str__(self):
+                out = ""
+                for (q, m, d) in self.state_tuple:
+                    out += "{}|{} {}\n".format(q, m, d)
+                return out
+
+            def add_links(self, states):
+                new_links = []
+
+                # Possible derivative changes
+                q = self.state_tuple[0]
+
+                    if q[2] == '0':
+                        new_state_tuple = self.state_tuple
+                        new_state_tuple[i][2] == '+'
+                        new_links.append(new_state_tuple)
+
+                # Add links
+                for n in new_links:
+                    for s in states:
+                        if n == s:
+                            self.links.append(s)
+                print(len(new_links))
+
+            def __eq__(self, other):
+                return self.state_tuple == self.state_tuple
+
+        # Generate all possible states
+        state_tuples = []
         for (name, m_space, d_space) in self.quantities:
             s = [name, m_space, d_space]
-            possibles.append(list(itertools.product(*s)))
-        
-        self.states = list(itertools.product(*possibles))
+            state_tuples.append(list(itertools.product(*s)))
+        state_tuples = list(itertools.product(*state_tuples))
+        self.states = [State(x) for x in state_tuples]
 
-        num_states = len(self.states)
-        self.transitions = list(itertools.product(range(num_states), range(num_states)))
+        # Generate possisble transitions
+        for s in self.states:
+            s.add_links(self.states)
 
-        # Reason value correspondences
-        for (q1, m1, q2, m2) in self.value_cors:
-            def filt_c_s(state):
-                p = q = False
-                for x in state:
-                    if (x[0] == q1 and x[1] == m1):
-                        p = True
-                    if (x[0] == q2 and x[1] == m2):
-                        q = True
-                return not(p) or q # Return p implies q
-
-            def filt_c_t(transition):
-                s0 = self.states[transition[0]]
-                s1 = self.states[transition[0]]
-                return filt_c_s(s0) and filt_c_s(s1)
-
-            for t in self.transitions:
-                if not filt_c_t(t):
-                    t = None
-            for s in self.states:
-                if not filt_c_s(s):
-                    s = None
-
-        # Reason derivative transistions
-        for t in self.transistions:
-            s0 = t[0]
-            s1 = t[1]
-            print(s0)
-
+        # Remove nodes without connections
+        self.states = [x for x in self.states if x.links != []]
 
     def plot_state_graph(self):
         print("Plotting state graph")
-        print("Nodes: ", len(self.states))
-        print("Edges: ", len(self.transitions))
 
         # Plot state graph
         g = gv.Digraph(format='svg')
@@ -79,12 +84,8 @@ class CausalModel():
         # Adding quantities
         for s in self.states:
             g.node(str(s))
-
-        # Add influencial relationships
-        for r in self.transitions:
-            src = str(self.states[r[0]])
-            dst = str(self.states[r[1]])
-            g.edge(src, dst, "a")
+            for l in s.links:
+                g.edge(str(s), str(l))
 
         styles = {
             'graph': {
@@ -92,10 +93,9 @@ class CausalModel():
                 'fontsize': '15',
                 'fontcolor': '#999999',
                 'bgcolor': '#ffffff',
-                'rankdir': 'LR',
             },
             'nodes': {
-                'fontname': 'Helvetica',
+                'fontname': 'Monospace',
                 'shape': 'circle',
                 'fontcolor': 'white',
                 'color': 'white',
@@ -207,12 +207,12 @@ def main():
     # Define causal model
     cm = CausalModel()
     cm.add_quantity("I", ["0", "+"], ["0", "-", "+"])
-    cm.add_quantity("O", ["0", "+", "max"], ["0", "-", "+"])
-    cm.add_quantity("V", ["0", "+", "max"], ["0", "-", "+"])
+    cm.add_quantity("O", ["0", "+", "m"], ["0", "-", "+"])
+    cm.add_quantity("V", ["0", "+", "m"], ["0", "-", "+"])
     cm.add_infl_rel("I", "V", "+")
     cm.add_infl_rel("O", "V", "-")
     cm.add_prop_rel("V", "O", "+")
-    cm.add_value_cor("V", "max", "O", "max")
+    cm.add_value_cor("V", "m", "O", "m")
     cm.add_value_cor("V", "0", "O", "0")
 
     # Print and plot causal model
