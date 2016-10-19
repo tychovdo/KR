@@ -1,5 +1,6 @@
 import itertools
 import graphviz as gv
+import math
 
 class CausalModel():
     def __init__(self):
@@ -22,8 +23,6 @@ class CausalModel():
         self.value_cors.append((q1, m1, q2, m2))
 
     def next_states(self, s):
-        next_states = []
-
         # Remove illegal states
         def is_legal(state):
             for i in range(len(state)):
@@ -34,19 +33,57 @@ class CausalModel():
                 if (m_space.index(m) + d > len(m_space)): # No overflow
                     return False
 
-#           # Check value correlations
-#           for (q1, m1, q2, m2) in self.value_cors:
-#               q1i = [x[0] for x in self.quantities].index(q1)
-#               q2i = [x[0] for x in self.quantities].index(q2)
-#               if state[q1i][1] == m1 and not state[q2i][1] == m2:
-#                   return False
+            # Check value constraints
+            for (q1, m1, q2, m2) in self.value_cors:
+                q1i = [x[0] for x in self.quantities].index(q1)
+                q2i = [x[0] for x in self.quantities].index(q2)
+                if state[q1i][1] == m1 and not state[q2i][1] == m2:
+                    return False
+                if state[q2i][1] == m2 and not state[q1i][1] == m1:
+                    return False
+            
+            # Apply influencial relationship
+            for i in range(len(state)):
+                q, m, d = state[i]
 
-#               if state[q2i][1] == m2 and not state[q1i][1] == m1:
-#                   return False
+                pos_ds = self.quantities[i][2]
+                inf_ds = []
+                for src, dst, amount in self.influences:
+                    src_i = [x[0] for x in self.quantities].index(src)
+                    dst_i = [x[0] for x in self.quantities].index(dst)
+                    if(dst == q):
+                        a = state[src_i][1]
+                        a_int = +1
+                        if(a == '-'):
+                            a_int = -1
+                        if(a == '0'):
+                            a_int = 0
+                        # if(a_int * amount != 0):
+                        inf_ds.append(a_int * amount)
+                
+                if (0 in inf_ds and len(inf_ds) > 1):
+                    inf_ds.remove(0)
+
+                if inf_ds != []:
+                    pos_ds = list(range(min(inf_ds), max(inf_ds) + 1))
+                    if d not in pos_ds:
+                        return False
+
+            # Apply proportionality constraints
+            for src, dst, amount in self.proportionals:
+                src_i = [x[0] for x in self.quantities].index(src)
+                dst_i = [x[0] for x in self.quantities].index(dst)
+                d1 = state[src_i][2]
+                d2 = state[dst_i][2]
+                if(d1 != d2):
+                    return False
+
             return True
 
         if not is_legal(s):
             return False
+
+        next_states = []
 
         # Calculate new magnitude space
         new_m_spaces = []
@@ -60,9 +97,11 @@ class CausalModel():
 
             if(0 <= m_space.index(m) + d < len(m_space)):
                 new_m_space.append(m_space[m_space.index(m) + d])
+            else:
+                if(q != 'I'):
+                    return [] # todo
 
             new_m_spaces.append(new_m_space)
-
 
         # Calculate new derivative space (inflow adjust)
         new_d_spaces = []
@@ -70,14 +109,14 @@ class CausalModel():
             q, m, d = s[i]
             new_d_space = [d]
 
-            if(i == 0): # Inflow adjust
-                for new_d in range(d - 1, d + 2):
-                    if new_d in d_space:
-                        if not (m_space.index(m) + new_d < 0):                # No underflow
-                            if not (m_space.index(m) + new_d > len(m_space)): # No overflow
-                                new_d_space.append(new_d)
+            # Derivative
+            for new_d in range(d - 1, d + 2):
+                if new_d in d_space:
+                    if not (m_space.index(m) + new_d < 0):                # No underflow
+                        if not (m_space.index(m) + new_d > len(m_space)): # No overflow
+                            new_d_space.append(new_d)
+            
             new_d_spaces.append(new_d_space)
-
 
         # Generate next possible states situations
         new_tmp = []
@@ -90,68 +129,48 @@ class CausalModel():
             next_state = [list(x) for x in new_state]
             next_states.append(next_state)
 
- #      # Apply influencial relationship
- #      for src, dst, amount in self.influences:
- #          src_i = [x[0] for x in self.quantities].index(src)
- #          dst_i = [x[0] for x in self.quantities].index(dst)
- #          for i in range(len(next_states)):
- #              if self.quantities[src_i][1].index(next_states[i][src_i][1]) > 0:
- #                  next_states[i][dst_i][2] = amount
- 
-#       # Apply proportional relationship (fakey)
-#       for src, dst, amount in self.proportionals:
-#           src_i = [x[0] for x in self.quantities].index(src)
-#           dst_i = [x[0] for x in self.quantities].index(dst)
-#           for i in range(len(next_states)):
-#               if(amount > 0): # todo negative prop
-#                   if next_states[i][src_i][1] == '+':
-#                       next_states[i][dst_i][1] == '+' # todo multiple positives
-
         legals = [x for x in next_states if is_legal(x)]
 
         return legals
 
     def reason(self):
-        g = gv.Digraph(format='svg')
+        g = gv.Digraph(format='dot')
 
         # Generate possible states
-        self.states = []
+        self.all_states = []
         for [name, m_space, d_space] in self.quantities:
             s = (name, m_space, d_space)
-            self.states.append(list(itertools.product(*s)))
-        self.states = list(itertools.product(*self.states))
-
-#        self.states = self.states[342:343]
-
-#       for i in range(len(self.states)):
-#           print("{:4} : {}".format(i, self.states[i]))
+            self.all_states.append(list(itertools.product(*s)))
+        self.all_states = list(itertools.product(*self.all_states))
 
         # Generate possible transitions
-        self.transitions = []
+        transitions = []
         num_states = 0
-        for s in self.states:
+        for s in self.all_states:
             # Find next states
             next_states = self.next_states(s)
 
             # Add next states to graph
             if next_states != False:
-                list_s = [list(x) for x in s]
-                g.node(self.to_str(list_s))
                 num_states += 1
+                list_s = [list(x) for x in s]
                 for n in next_states:
-                    self.transitions.append((self.to_str(list_s), self.to_str(n)))
+                    transitions.append((self.to_str(list_s), self.to_str(n)))
 
         # Remove duplicates
-        print(len(self.transitions))
-        self.transitions = list(set(self.transitions))
-        print(len(self.transitions))
-        for (a, b) in self.transitions:
+        transitions = list(set(transitions))
+
+        # Add state and transition strings to plot
+        print("States:      ", num_states)
+        print("Transitions: ", len(transitions))
+        for (a, b) in transitions:
             g.edge(a, b)
 
-        # Plot
+        # Plot using style
         styles = {
             'graph': {
-                'label': 'Causal model',
+                'label': 'State graph',
+                'splines':'curved',
                 'fontsize': '15',
                 'fontcolor': '#999999',
                 'bgcolor': '#ffffff',
@@ -160,7 +179,7 @@ class CausalModel():
                 'fontname': 'Monospace',
                 'shape': 'circle',
                 'fontcolor': 'white',
-                'fontsize': '10',
+                'fontsize': '8',
                 'color': 'white',
                 'style': 'filled',
                 'fillcolor': '#006699',
@@ -185,7 +204,6 @@ class CausalModel():
         )
 
         filename = g.render(filename='stategraph')
-        print("States: ", num_states)
         print("Graph:  ", filename)
 
     def to_str(self, s):
