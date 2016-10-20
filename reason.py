@@ -1,5 +1,6 @@
 import itertools
 import graphviz as gv
+import matplotlib.pyplot as plt
 import math
 
 class CausalModel():
@@ -174,6 +175,7 @@ class CausalModel():
                 'fontsize': '15',
                 'fontcolor': '#999999',
                 'bgcolor': '#ffffff',
+                'size': '420,594',
             },
             'nodes': {
                 'fontname': 'Monospace',
@@ -187,6 +189,7 @@ class CausalModel():
             'edges': {
                 'color': '#999999',
                 'arrowhead': 'open',
+                'arrowsize': '.5',
                 'fontname': 'Helvetica',
                 'fontsize': '12',
                 'fontcolor': '#999999',
