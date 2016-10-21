@@ -3,6 +3,35 @@ import graphviz as gv
 import math
 import time
 
+
+def main():
+    # Define causal model
+    simple = CausalModel()
+    simple.add_quantity("I", ["0", "+"], [-1, 0, 1])
+    simple.add_quantity("V", ["0", "+", "m"], [-1, 0, 1])
+    simple.add_quantity("O", ["0", "+", "m"], [-1, 0, 1])
+    simple.add_infl_rel("I", "V", 1)
+    simple.add_infl_rel("O", "V", -1)
+    simple.add_prop_rel("V", "O", 1)
+    simple.add_value_cor("V", "m", "O", "m")
+    simple.add_value_cor("V", "0", "O", "0")
+
+    # Define causal model
+    advanced = CausalModel()
+    advanced.add_quantity("I", ["0", "+"], [-1, 0, 1])
+    advanced.add_quantity("V", ["0", "+", "m"], [-1, 0, 1])
+    advanced.add_quantity("O", ["0", "+", "m"], [-1, 0, 1])
+    advanced.add_infl_rel("I", "V", 1)
+    advanced.add_infl_rel("O", "V", -1)
+    advanced.add_prop_rel("V", "O", 1)
+    advanced.add_value_cor("V", "m", "O", "m")
+    advanced.add_value_cor("V", "0", "O", "0")
+
+    # Generate state graphs
+    simple.reason()
+    advanced.reason()
+
+
 class CausalModel():
     def __init__(self):
         self.quantities = []
@@ -253,33 +282,6 @@ class CausalModel():
             out += "{}|{} {:2}\n".format(q, m, d)
         return out
 
-
-def main():
-    # Define causal model
-    simple = CausalModel()
-    simple.add_quantity("I", ["0", "+"], [-1, 0, 1])
-    simple.add_quantity("V", ["0", "+", "m"], [-1, 0, 1])
-    simple.add_quantity("O", ["0", "+", "m"], [-1, 0, 1])
-    simple.add_infl_rel("I", "V", 1)
-    simple.add_infl_rel("O", "V", -1)
-    simple.add_prop_rel("V", "O", 1)
-    simple.add_value_cor("V", "m", "O", "m")
-    simple.add_value_cor("V", "0", "O", "0")
-
-    # Define causal model
-    advanced = CausalModel()
-    advanced.add_quantity("I", ["0", "+"], [-1, 0, 1])
-    advanced.add_quantity("V", ["0", "+", "m"], [-1, 0, 1])
-    advanced.add_quantity("O", ["0", "+", "m"], [-1, 0, 1])
-    advanced.add_infl_rel("I", "V", 1)
-    advanced.add_infl_rel("O", "V", -1)
-    advanced.add_prop_rel("V", "O", 1)
-    advanced.add_value_cor("V", "m", "O", "m")
-    advanced.add_value_cor("V", "0", "O", "0")
-
-    # Generate state graphs
-    simple.reason()
-    advanced.reason()
 
 if __name__=="__main__":
     main()
