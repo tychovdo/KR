@@ -23,6 +23,29 @@ class CausalModel():
     def add_value_cor(self, q1, m1, q2, m2):
         self.value_cors.append((q1, m1, q2, m2))
 
+
+    def print_model(self):
+        print("=============== CAUSAL MODEL ===============")
+        print("QUANTITIES")
+        print("name            values               derivatives")
+        for (name, m_space, d_space) in self.quantities:
+            print("{:15} {:20} {:20}".format(name, str(m_space), str(d_space)))
+
+        print("\nINFLUENCIAL RELATIONSHIPS")
+        print("from            to         amount")
+        for (src, dst, amount) in self.influences:
+            print("{:15} {:10} {:10}".format(src, dst, amount))
+
+        print("\nPROPORTIONAL RELATIONSHIPS")
+        print("from            to         amount")
+        for (src, dst, amount) in self.proportionals:
+            print("{:15} {:10} {:10}".format(src, dst, amount))
+
+        print("\nVALUE CORRESPONDENCES")
+        for (src, src_amount, dst, dst_amount) in self.value_cors:
+            print("{}({:5})   = {}({:5})".format(src, src_amount, dst, dst_amount))
+        print("============================================")
+
     def next_states(self, s):
         # Remove illegal states
         def is_legal(state):
@@ -222,9 +245,13 @@ def main():
     cm.add_quantity("I", ["0", "+"], [-1, 0, 1])
     cm.add_quantity("V", ["0", "+", "m"], [0, -1, 1])
     cm.add_quantity("O", ["0", "+", "m"], [0, -1, 1])
+    cm.add_quantity("H", ["0", "+", "m"], [0, -1, 1])
+    cm.add_quantity("P", ["0", "+", "m"], [0, -1, 1])
     cm.add_infl_rel("I", "V", 1)
     cm.add_infl_rel("O", "V", -1)
-    cm.add_prop_rel("V", "O", 1)
+    cm.add_prop_rel("P", "O", 1)
+    cm.add_prop_rel("V", "H", 1)
+    cm.add_prop_rel("H", "P", 1)
     cm.add_value_cor("V", "m", "O", "m")
     cm.add_value_cor("V", "0", "O", "0")
 
