@@ -36,3 +36,5 @@ $ make pdf
 ## Requirements
 
 - `python==3.5.1`
+- `graphviz`
+
